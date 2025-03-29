@@ -1,0 +1,59 @@
+# Dados baixados/gerados
+data/
+output/
+scripts/sql/*_*.sql
+
+# Arquivos temporários
+temp_zip/
+*.tmp
+
+# Arquivos compilados Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Ambientes virtuais
+.env
+.venv
+venv/
+ENV/
+env/
+
+# Arquivos IDE/editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Arquivos específicos do sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arquivos zip
+*.zip
+
+# Logs
+*.log
+logs/

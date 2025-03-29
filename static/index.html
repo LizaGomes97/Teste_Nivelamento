@@ -1,0 +1,155 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Busca de Operadoras ANS</title>
+    <!-- Bootstrap para estilização rápida -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Vue.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <!-- Axios para requisições HTTP -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+      .container {
+        margin-top: 50px;
+      }
+      .loading {
+        opacity: 0.5;
+      }
+      .resultados {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="container">
+      <h1 class="mb-4">Busca de Operadoras ANS</h1>
+
+      <div class="row">
+        <div class="col-md-8">
+          <div class="input-group mb-3">
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Digite o nome, CNPJ ou registro da operadora"
+              v-model="termoBusca"
+              @keyup.enter="buscarOperadoras"
+            />
+            <button
+              class="btn btn-primary"
+              @click="buscarOperadoras"
+              :disabled="buscando"
+            >
+              Buscar
+            </button>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <select class="form-control" v-model="limite">
+              <option value="10">10 resultados</option>
+              <option value="25">25 resultados</option>
+              <option value="50">50 resultados</option>
+              <option value="100">100 resultados</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultados da busca -->
+      <div class="resultados" :class="{ loading: buscando }">
+        <div v-if="erro" class="alert alert-danger">{{ erro }}</div>
+
+        <div
+          v-if="operadoras.length === 0 && !buscando && !erro"
+          class="alert alert-info"
+        >
+          Nenhuma operadora encontrada. Tente outros termos de busca.
+        </div>
+
+        <table v-if="operadoras.length > 0" class="table table-striped">
+          <thead>
+            <tr>
+              <th>Registro ANS</th>
+              <th>Razão Social</th>
+              <th>Nome Fantasia</th>
+              <th>CNPJ</th>
+              <th>Modalidade</th>
+              <th>UF</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="operadora in operadoras" :key="operadora.Registro_ANS">
+              <td>{{ operadora.registro_ans || operadora.Registro_ANS }}</td>
+              <td>{{ operadora.razao_social || operadora.Razao_Social }}</td>
+              <td>{{ operadora.nome_fantasia || operadora.Nome_Fantasia }}</td>
+              <td>{{ operadora.cnpj || operadora.CNPJ }}</td>
+              <td>{{ operadora.modalidade || operadora.Modalidade }}</td>
+              <td>{{ operadora.uf || operadora.UF }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#app",
+        data: {
+          termoBusca: "",
+          limite: 10,
+          operadoras: [],
+          buscando: false,
+          erro: null,
+          apiUrl: "/api/operadoras",
+        },
+        methods: {
+          buscarOperadoras() {
+            this.buscando = true;
+            this.erro = null;
+
+            console.log("Iniciando busca...");
+            console.log("Termo de busca:", this.termoBusca);
+            console.log("Limite:", this.limite);
+
+            axios
+              .get(this.apiUrl, {
+                params: {
+                  q: this.termoBusca,
+                  limite: this.limite,
+                },
+              })
+              .then((response) => {
+                console.log("Resposta da API recebida:", response);
+                this.operadoras = response.data;
+              })
+              .catch((error) => {
+                console.error("Erro na busca:", error);
+                if (error.response) {
+                  console.error("Detalhes do erro:", error.response.data);
+                }
+                this.erro =
+                  "Erro ao buscar operadoras. Verifique se o servidor está funcionando.";
+              })
+              .finally(() => {
+                console.log("Finalizando busca...");
+                this.buscando = false;
+              });
+          },
+          carregarOperadoras() {
+            console.log("Carregando operadoras ao iniciar...");
+            this.buscarOperadoras();
+          },
+        },
+        mounted() {
+          this.carregarOperadoras();
+        },
+      });
+    </script>
+  </body>
+</html>
