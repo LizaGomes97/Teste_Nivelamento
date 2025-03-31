@@ -7,6 +7,7 @@ from flask_cors import CORS
 import pandas as pd
 import os
 from pathlib import Path
+from src.api.filtros import aplicar_filtros, extrair_opcoes_unicas
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # Isso garante que caracteres não-ASCII sejam preservados
@@ -15,16 +16,9 @@ CORS(app)  # Permitir solicitações cross-origin
 # Caminho para o arquivo CSV das operadoras
 CSV_PATH = Path('data/dados_ans/operadoras/Relatorio_cadop.csv')
 
-def buscar_operadoras(termo_busca='', limite=10):
+def buscar_operadoras(termo_busca='', limite=10, uf='', modalidade='', ordenacao='razao_social', ordem='asc'):
     """
-    Busca e filtra operadoras com base em um termo de busca
-    
-    Args:
-        termo_busca (str): Termo a ser buscado nos dados das operadoras
-        limite (int): Número máximo de resultados a retornar
-        
-    Returns:
-        list: Lista de dicionários com os dados das operadoras encontradas
+    Busca e filtra operadoras com base em diversos criterios
     """
     # Verificar se o arquivo existe
     if not os.path.exists(CSV_PATH):
@@ -33,43 +27,42 @@ def buscar_operadoras(termo_busca='', limite=10):
     try:
         # Carregar o CSV
         df = pd.read_csv(CSV_PATH, sep=';', encoding='utf-8')
-
-        # Se não houver termo de busca, retornar as primeiras operadoras
-        if not termo_busca:
-            resultado = df.head(limite)
-            # Converter todas as colunas para strings
-            resultado = resultado.astype(str)
-            # Substituir 'nan' por string vazia
-            resultado = resultado.replace('nan', '')
-            return resultado.to_dict('records')
-
-        # Convertendo colunas para string para evitar erros
-        for col in df.columns:
-            df[col] = df[col].astype(str)
-            df[col] = df[col].replace('nan', '')
-
-        # Filtrar os dados por diferentes colunas
-        resultados = df[
-            df['Razao_Social'].str.contains(termo_busca, case=False, na=False) |
-            df['Nome_Fantasia'].str.contains(termo_busca, case=False, na=False) |
-            df['Registro_ANS'].str.contains(termo_busca, case=False, na=False) |
-            df['CNPJ'].str.contains(termo_busca, case=False, na=False)
-        ]
-
+        
+        # Aplicar filtros avançados
+        df_filtrado = aplicar_filtros(df, termo_busca, uf, modalidade, ordenacao, ordem)
+        
         # Limitar quantidade de resultados
-        return resultados.head(limite).to_dict('records')
-
+        resultados = df_filtrado.head(limite)
+        
+        return resultados.to_dict('records')
     except Exception as e:
         return {'error': str(e)}
+
+# Adicionar rota para obter opções de filtro
+@app.route('/api/opcoes-filtro', methods=['GET'])
+def api_opcoes_filtro():
+    """API endpoint para obter opções de filtro"""
+    if not os.path.exists(CSV_PATH):
+        return jsonify({'erro': 'Arquivo de operadoras não encontrado'})
+    
+    try:
+        df = pd.read_csv(CSV_PATH, sep=';', encoding='utf-8')
+        opcoes = extrair_opcoes_unicas(df)
+        return jsonify(opcoes)
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 # Rota de API para buscar operadoras
 @app.route('/api/operadoras', methods=['GET'])
 def api_buscar_operadoras():
-    """API endpoint para buscar operadoras"""
     termo_busca = request.args.get('q', '')
     limite = int(request.args.get('limite', 10))
+    uf = request.args.get('uf', '')
+    modalidade = request.args.get('modalidade', '')
+    ordenacao = request.args.get('ordenacao', 'razao_social')
+    ordem = request.args.get('ordem', 'asc')
 
-    resultados = buscar_operadoras(termo_busca, limite)
+    resultados = buscar_operadoras(termo_busca, limite, uf, modalidade, ordenacao, ordem)
     response = jsonify(resultados)
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     return response

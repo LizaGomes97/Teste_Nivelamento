@@ -10,6 +10,10 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
     <!-- Vue.js via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <!-- Axios para requisições HTTP -->
@@ -61,6 +65,16 @@
         </div>
       </div>
 
+      <!--Componente de filtro avançado-->
+      <div class="row mb-3">
+        <div class="col-md-12">
+          <advanced-search
+            @filtros-alterados="aplicarFiltrosAvancados"
+            ref="filtrosAvancados"
+          ></advanced-search>
+        </div>
+      </div>
+
       <!-- Resultados da busca -->
       <div class="resultados" :class="{ loading: buscando }">
         <div v-if="erro" class="alert alert-danger">{{ erro }}</div>
@@ -97,7 +111,11 @@
       </div>
     </div>
 
+    <!-- Importar o componente de filtros avançados -->
+    <script src="/js/advanced_search.js"></script>
+
     <script>
+      Vue.component("advanced-search", AdvancedSearch);
       new Vue({
         el: "#app",
         data: {
@@ -107,26 +125,63 @@
           buscando: false,
           erro: null,
           apiUrl: "/api/operadoras",
+          filtrosAtivos: {},
+          todasAsOpcoes: null,
         },
         methods: {
+          carregarOpcoesDeFiltragem() {
+            axios
+              .get("/api/opcoes-filtro")
+              .then((response) => {
+                this.todasAsOpcoes = response.data;
+                // Atualizar o componente de filtros com todas as opções
+                if (this.$refs.filtrosAvancados) {
+                  this.$refs.filtrosAvancados.atualizarOpcoesUnicas(
+                    [],
+                    this.todasAsOpcoes
+                  );
+                }
+              })
+              .catch((error) => {
+                console.error("Erro ao carregar opções de filtragem:", error);
+              });
+          },
           buscarOperadoras() {
             this.buscando = true;
             this.erro = null;
 
+            // Garantir que filtrosAtivos existe
+            if (!this.filtrosAtivos) {
+              this.filtrosAtivos = {};
+            }
+
+            // Construir parâmetros completos para a API
+            const params = {
+              q: this.termoBusca,
+              limite: this.limite,
+              uf: this.filtrosAtivos.uf || "",
+              modalidade: this.filtrosAtivos.modalidade || "",
+              ordenacao: this.filtrosAtivos.ordenacao || "razao_social",
+              ordem: this.filtrosAtivos.ordem || "asc",
+            };
+
+            console.log("Parâmetros da busca:", params);
             console.log("Iniciando busca...");
             console.log("Termo de busca:", this.termoBusca);
             console.log("Limite:", this.limite);
 
             axios
-              .get(this.apiUrl, {
-                params: {
-                  q: this.termoBusca,
-                  limite: this.limite,
-                },
-              })
+              .get(this.apiUrl, { params })
               .then((response) => {
                 console.log("Resposta da API recebida:", response);
                 this.operadoras = response.data;
+
+                if (this.$refs.filtrosAvancados && this.todasAsOpcoes) {
+                  this.$refs.filtrosAvancados.atualizarOpcoesUnicas(
+                    this.operadoras,
+                    this.todasAsOpcoes
+                  );
+                }
               })
               .catch((error) => {
                 console.error("Erro na busca:", error);
@@ -141,15 +196,21 @@
                 this.buscando = false;
               });
           },
+          aplicarFiltrosAvancados(filtros) {
+            this.filtrosAtivos = filtros;
+            this.buscarOperadoras();
+          },
           carregarOperadoras() {
             console.log("Carregando operadoras ao iniciar...");
             this.buscarOperadoras();
           },
         },
         mounted() {
+          this.carregarOpcoesDeFiltragem();
           this.carregarOperadoras();
         },
       });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
